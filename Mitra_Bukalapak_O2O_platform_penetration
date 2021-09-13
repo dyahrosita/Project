@@ -1,0 +1,272 @@
+# RAWDATA_BEETLE_20210616_CS.xlsx
+from google.colab import files
+uploaded = files.upload()
+
+%matplotlib inline
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+from sklearn import preprocessing
+import urllib
+import cv2
+
+from google.colab.patches import cv2_imshow
+
+pd.options.display.float_format = '{:,.2f}'.format
+def format_float(value):
+    return f'{value:,.2f}'
+pd.options.display.float_format = format_float
+
+df = pd.read_excel([*uploaded][0])
+
+column_name = list(df.columns)
+
+column_name = [sub.replace('Dalam satu bulan, berapa rata - rata total uang yang dibelanjakan untuk produk yang dijual di toko melalui',
+                           'Belanja Produk yg dijual melalui').
+               replace('Platform online atau Kemitraan apa yang sudah digunakan oleh toko untuk penyedia layanan transfer/ kirim uang?:',
+                           'Layanan Keuangan_').
+               replace('Platform Online atau Kemitraan apa yang sudah digunakan oleh toko untuk penyediaan layanan jasa seperti jual pulsa, bayar tagihan, pembelian token, pembelian tiket, tabungan emas, zakat, dll?:',
+                           'Layanan Jasa_').
+               replace('Platform online atau Kemitraan apakah yang sudah digunakan oleh toko untuk penyediaan produk kebutuhan sehari (makanan, minuman, rumah tangga, dll)?:',
+                           'Layanan Groceries_').
+               replace('Jika dual bisnis, apa saja bisnisnya?:',
+                           'Dual_').
+               replace('Brand Platform Online apa yang ada di penanda toko tersebut?:',
+                           'Branding_').
+               replace('Mengapa Anda belum/tidak menjadi Agen BukaSend di aplikasi Mitra Bukalapak?:',
+                           'Alasan_').
+               replace('Informasi apa sajakah yang ingin Anda ketahui tentang Agen BukaSend?:',
+                           'Informasi_').
+               replace('Melalui Media/channel apakah yang Anda sukai untuk mendapatkan info terbaru seputar Agen BukaSend?:',
+                           'Info_').
+               replace('Apakah pembeli bisa melakukan transaksi digital melalui platform berikut:',
+                           'Transaksi melalui_').
+               replace('Ambil Foto penanda toko/papan nama toko/spanduk toko yang terdapat Branding Online!',
+                       'Foto Branding Online').
+               replace('Ambil Foto penanda toko/papan nama toko/spanduk toko!',
+                       'Foto Nama Toko').
+               replace('Apakah toko ini dual bisnis?',
+                       'Dual Bisnis').
+               replace('Apakah toko mempunyai keinginan untuk bergabung sebagai Mitra Bukalapak?',
+                       'Ingin jadi Mitra Bukalapak').
+               replace('Apakah Anda tahu dan/atau pernah menjadi Agen BukaSend?',
+                       'Tahu/pernah jadi Agen BukaSend').
+               replace('Apakah pemilik/penjaga toko memperbolehkan untuk mengambil foto tampak dalam toko?',
+                       'Diijinkan mengambil foto').
+               replace('Apakah ada penanda toko permanen yang terlihat di luar toko yang didominasi Brand Platform Online tertentu? (SA)',
+                       'Branding Platform Online di Nama Toko').
+               replace('Apakah ada penanda toko/papan nama toko/spanduk toko?',
+                       'Ada Papan Nama Toko').
+               replace('Lokasi Toko - (Pilih yang terdekat)',
+                       'Lokasi Toko').
+               replace('Ukuran Luas Toko (m2)',
+                       'Luas Toko(m2)').
+               replace('Apakah toko sudah menggunakan platform online untuk bisnisnya? (Platform Online yang dimaksud adalah toko menjadi mitra dengan instansi tertentu yang akan menjadi penyalur/penyedia produk2 yang akan dijual)',
+                       'Ada Platform Online').
+               replace('Seberapa tertarik atau tidak tertarikkah Anda untuk menjadi Agen BukaSend?',
+                       'Tertarik jadi Agen BukaSend').
+               replace('Sebutkan Media/channel apakah yang Anda sukai untuk mendapatkan info terbaru seputar Agen BukaSend lainya?',
+                       ' Media info seputar Agen BukaSend').
+               replace('Silahkan ambil foto tampak dalam Toko (- untuk Toko pulsa, unjung ke ujung etalase - untuk GT di utmakan jika ada brand online platform, di foto)',
+                       'Foto dalam Toko').
+               replace('Mengambil foto tampak luar toko (Pastikan dapat memepermudah mengidentifikasi bangunan, jarak sekitar max 5 s/d 7 meter)',
+                       'Foto luar Toko').
+               replace('Apakah toko menggunakan internet (untuk oerasional/ kegiatan toko) ?',
+                       'Toko menggunakan internet').
+               replace('Jam buka Operasional (00.00-23.59)',
+                       'Jam Buka').
+               replace('Jam tutup Operasional (00.00-23.59)',
+                       'Jam Tutup').
+               replace('(Q9A - Q9B )',
+                       'Jam Operasional').
+               replace('Estimasi OMSET TOKO (penjualan toko) PER HARI? (dalam Rupiah)',
+                       'OMSET PER HARI').
+               replace('Estimasi OMSET TOKO (penjualan toko) PER MINGGU (dalam Rupiah)',
+                       'OMSET PER MINGGU').
+               replace('Sudah berapa lama toko beroperasi?',
+                       'Usia Toko').
+               replace('Berapakah jumlah pegawai toko?',
+                       'Jmlh pegawai').
+               replace('Device / alat apa yang biasa toko gunakan untuk mengakses internet?:',
+                       'Device utk internet').
+               replace('Berapakah perkiraan Range usia Pemilik Toko?',
+                       'Usia OWNER').
+               replace('Nama Jalan Alamat Toko',
+                       'Alamat').
+               replace('Nomor Rumah / Bangunan (sesuai alamat )',
+                       'Nomor').
+               replace("RT - Maximal 3 digit Di awali dari '0' misal (001)",
+                       'RT').
+               replace("RW - Maximal 3 digit Di awali dari '0' misal (001)",
+                       'RW').
+               replace('Ukuran Jalan', ' Ukuran Jalan').
+               replace("'Sebutkan sumber pembelian supply toko:",
+                       'Sumber supply_')                                         
+                for sub in column_name]
+
+new_name = []
+i = 0
+for text in column_name:
+  if text.find('.') == -1:
+    new_name.append(text)
+    continue
+  else:
+    ind = text.find('.')
+    new_name.append(text[ind+2:])
+    i += 1
+
+#for i in range(len(new_name)):
+#  print(i , new_name[i])
+
+new_name[154:169] =  [sub.replace('Belanja Produk yg dijual melalui',
+                                  'Hasil dari Layanan Jasa:') for sub in new_name[154:169]]
+new_name[187:204] =  [sub.replace('Belanja Produk yg dijual melalui',
+                                  'Hasil dari Layanan Keuangan:') for sub in new_name[187:204]]
+
+for i in range(len(new_name)):
+  print(i , new_name[i])
+
+df.columns = new_name
+
+df.describe()
+
+# DROP COLUMNS:
+drop_col = ['Alasan Toko buka Kurang dari 6 Jam',
+            'Mitra Bukalapak adalah aplikasi yang memberikan kesempatan kepada semua masyarakat yang memiliki usaha maupun tidak untuk mendapatkan penghasilan tambahan dengan berjualan produk grosir dan/atau produk virtual. ',
+            'Agen BukaSend adalah penghubung antara Pelanggan yang ingin mengirimkan barang, dengan kurir logistik yang telah bekerjasama. Saat ini, kurir yang telah bekerja sama dengan fitur Agen BukaSend yaitu : SiCepat Ekspres, J&T Express, Lion Parcel, JNE, Ninja Xpress dan Grab. Mitra dimana Agen Buka Send bisa dapat cashback ongkos kirim hingga 35%.',
+            'Anda tidak perlu mengeluarkan biaya untuk menjadi Agen BukaSend, hanya cukup melakukan pendaftaran di aplikasi Mitra Bukalapak, dan siap menerima siapa saja yang ingin melakukan pengiriman barang',
+            'STORE_STATUS', 'Alamat', 'Nomor', 'RT', 'RW', 'Nama responden', 'Nama Lengkap Pemilik Toko',
+            'Infomasi tambahan lokasi toko', 'Tanggal Survey', 'Lokasi Toko Lainnya..'
+            ]
+df = df.drop(drop_col, axis = 1)
+
+
+for i in range(len(df.columns)):
+  print(i , df.columns[i])
+
+print(df.shape)
+df.head()
+
+# Provinsi dan Kota tempat pengambilan sample
+Dicek ulang dengan jumlah sample masing2 area yg diharapkan
+
+df.pivot_table(index=['PROVINCE','KOTA/KABUPATEN'],
+               values= ['RESPONSE_ID'],
+               columns= ['Type toko'],
+               aggfunc= 'count')
+
+df['Estimasi OMSET TOKO (penjualan toko Harian), PER Bulan (dalam Rupiah)'] = df['Estimasi OMSET TOKO (penjualan toko Harian), PER Bulan (dalam Rupiah)'].fillna(0)
+df['Estimasi OMSET TOKO (penjualan toko mingguan) ,PER Bulan (dalam Rupiah)'] = df['Estimasi OMSET TOKO (penjualan toko mingguan) ,PER Bulan (dalam Rupiah)'].fillna(0)
+
+df['OMSET PER BULAN'] = df['Estimasi OMSET TOKO (penjualan toko Harian), PER Bulan (dalam Rupiah)'] + df['Estimasi OMSET TOKO (penjualan toko mingguan) ,PER Bulan (dalam Rupiah)'] 
+
+
+
+conditions = [
+    (df['OMSET PER BULAN'] > 10000000),
+    (df['OMSET PER BULAN'] <= 10000000) & (df['OMSET PER BULAN'] >= 3000000),
+    (df['OMSET PER BULAN'] < 3000000)]
+              
+values = ['GT Large', 'GT Small', 'GT Warung']
+
+df['Cek Tipe GT'] = np.select(conditions, values)
+
+
+# Cek Tipe Toko (GT Large/ GT Small/ Kios Pulsa)
+df['Cek Tipe Toko'] = np.where(df['Type toko'] == 'Kios Pulsa','Kios Pulsa', df['Cek Tipe GT'])
+df['Cek Tipe Toko']
+
+df.pivot_table(index=['PROVINCE','KOTA/KABUPATEN'],
+               values= ['RESPONSE_ID'],
+               columns= ['Cek Tipe Toko'],
+               aggfunc= 'count')
+
+conditions = [
+    (df['OMSET PER BULAN'] > 10000000),
+    (df['OMSET PER BULAN'] <= 10000000)]
+              
+values = ['GT Large', 'GT Small']
+
+df['Cek Tipe GT'] = np.select(conditions, values)
+
+
+# Cek Tipe Toko (GT Large/ GT Small/ Kios Pulsa)
+df['Cek Tipe Toko'] = np.where(df['Type toko'] == 'Kios Pulsa','Kios Pulsa', df['Cek Tipe GT'])
+df['Cek Tipe Toko']
+
+df.pivot_table(index=['PROVINCE','KOTA/KABUPATEN'],
+               values= ['RESPONSE_ID'],
+               columns= ['Cek Tipe Toko'],
+               aggfunc= 'count')
+
+# Ukuran Jalan Toko/ Warung
+Rata2 toko berada di jalan 1 atau 2 mobil
+
+df.groupby('Ukuran Jalan').agg('count')['RESPONSE_ID']/df.shape[0]*100
+
+# Ada/ Tidak ada Papan Nama Toko
+
+df.groupby('Ada Papan Nama Toko').agg('count')['RESPONSE_ID']
+#/df.shape[0]*100
+
+df[df['Ada Papan Nama Toko'] == 'Ada'].groupby('Branding Platform Online di Nama Toko').agg('count')['RESPONSE_ID']
+#/df.groupby('Ada Papan Nama Toko').agg('count')['RESPONSE_ID'][0]*100
+
+df.iloc[:,11:47] = df.iloc[:,11:47].dropna().astype(int)
+
+# Branding Platform  Toko
+
+df.pivot_table(values= ['Branding_Ayo SRC', 'Branding_Ayopop', 'Branding_BCA M-Banking',
+               'Branding_Blibli Mitra', 'Branding_BNI/Syariah Mobile Banking', 'Branding_BNI46',
+               'Branding_BRIlink', 'Branding_Dana', 'Branding_Doku',
+               'Branding_Flip', 'Branding_Gopay', 'Branding_GrabKios',
+               'Branding_Gudang Pulsa', 'Branding_GudangAda', 'Branding_Indopay',
+               'Branding_iSaku', 'Branding_JakOne Mobile', 'Branding_Kioser',
+               'Branding_LangitPay', 'Branding_LinkAja', 'Branding_Mitra Bukalapak',
+               'Branding_GoToko', 'Branding_Mitra Shopee', 'Branding_Mitra Tokopedia',
+               'Branding_Mkios', 'Branding_MPI Reload', 'Branding_OCTO Go Mobile',
+               'Branding_Ovo', 'Branding_OBA ( Outlet Binaan Alfamart)', 'Branding_Payfazz',
+               'Branding_Paytren', 'Branding_PermataMe', 'Branding_Propana Reload',
+               'Branding_Sakuku', 'Branding_Ula', 'Branding_Warung Pintar'],
+               columns= 'Branding Platform Online di Nama Toko' ,aggfunc= 'sum'
+               ).sort_values('Ada', ascending= False)
+               #/df[df['Ada Papan Nama Toko'] == 'Ada'].groupby('Branding Platform Online di Nama Toko').agg('count')['RESPONSE_ID'][0]*100
+
+# Dual Bisnis atau tidak
+Hanya 12,5% Toko yang menjalankan Dual Bisnis
+
+df.groupby('Dual Bisnis').agg('count')['RESPONSE_ID']
+#/df.shape[0]*100
+
+# Rentang usia OWNER
+
+
+> Sebanyak 65% dari sample, usia owner berada di kisaran 31-50 tahun
+
+
+
+
+
+df.groupby('Usia OWNER').agg('count')['RESPONSE_ID']
+#/df.shape[0]*100
+
+# Seberapa welcome para pemilik toko terhadap sensus ini
+
+> 99,9% Toko mengijikan auditor untuk mengambil data sensus
+
+
+
+df.groupby('Apakah Auditor diizinkan untuk mendapatkan informasi mengenai toko untuk sensus ini?').agg('count')['RESPONSE_ID']/df.shape[0]*100
+
+
+
+
+# Keinginan Menjadi Mitra Bukalapak
+
+df.groupby('Ingin jadi Mitra Bukalapak').agg('count')['RESPONSE_ID']
+#/df.shape[0]*100
+
+
+
