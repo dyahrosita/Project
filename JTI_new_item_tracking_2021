@@ -1,0 +1,434 @@
+# Import LIbrary
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import re
+from functools import reduce
+import datetime as dt
+
+from google.colab import files
+from google.colab import drive
+drive.mount("/content/gdrive/")
+
+## Initial Audit (week 1)
+
+# ambil data dari GDrive
+IA = pd.read_excel('gdrive/My Drive/JACOB/Data Clean JTI-Jacob 2021 Week 1-IA.xlsx','Data Clean LHHT')
+# ganti data yang memiliki nilai N/A dengan 0
+IA = IA.fillna(0)
+
+# hitung total stol
+IA['Stock'] = IA['Shop/Front Stock']+IA['Other Stock']
+#buat kolom unique name utk mapping (concatenate) dengan menggabungkan store code dengan product description
+IA.insert(0, 'Concatenate', IA['SMS Id'].astype('str')+IA['Product Description'])
+
+# menghapus kolom2 yang tidak dibutuhkan
+IA = IA.drop(['Country Id', 'Country Name', 'Auditor Id', 'Resource Name','Instruction Id', 
+            'Category Id', 'Category Name', 'Module Name','Entity Id','Original Fact Value',
+            'Cluster Id','alternate audit methodology','Shop/Front Stock','Other Stock',
+            'Audit Status','Sales'], axis=1)
+# mengganti nama kolom agar sesuai dengan yg diinginkan
+IA.columns = IA.columns.str.replace('Number Of Observation by Type of Observation','RBP')
+
+# melihat sekilas data Initial Audit yang sudah dirapihkan
+IA.head()
+
+# membuat format untuk di merge dengan table lainnya
+m_IA = IA.copy()
+# mengganti nama kolom agar sesuai dengan yg diinginkan
+m_IA.columns = m_IA.columns.str.replace('Visit Date', 'IA').str.replace('RBP', 'RBP_IA').str.replace('RSP/Price','RSP_IA').str.replace('Stock','Stock_IA')
+m_IA.columns
+
+## Retail Audit 1 (week 2)
+
+RA1 = pd.read_excel('gdrive/My Drive/JACOB/Data Clean Jacob 2021 Week 2 (RA1).xlsx','Data Clean')
+RA1 = RA1.fillna(0)
+
+RA1['Visit Date'] = RA1['Visit Date'].str.replace('Agu','Aug')
+RA1['Visit Date'] = pd.to_datetime(RA1['Visit Date'])
+
+RA1['Stock'] = RA1['Shop/Front Stock']+RA1['Other Stock']
+RA1['Purchase'] = RA1['Direct Purchase(Pur1)']+RA1['Missing invoice(Pur3)']+RA1['Missing Stock']-RA1['Double Count']-RA1['Goods Returned']
+RA1.insert(0, 'Concatenate', RA1['SMS Id'].astype('str')+RA1['Product Description'])
+
+RA1 = RA1.drop(['Country Id', 'Country Name', 'Auditor Id', 'Resource Name','Instruction Id', 
+            'Category Id', 'Category Name', 'Module Name','Entity Id','Original Fact Value',
+            'Cluster Id','alternate audit methodology','Shop/Front Stock','Other Stock',
+            'Direct Purchase(Pur1)','Double Count', 'Goods Returned', 'Missing invoice(Pur3)',
+            'Missing Stock','Audit Status'], axis=1)
+RA1.columns = RA1.columns.str.replace('Number Of Observation by Type of Observation','RBP')
+
+'''new_IA = IA[['SMS Id','Visit Date']].drop_duplicates()
+new_IA.columns = new_IA.columns.str.replace('Visit Date', 'Prev_Visit Date')
+new2_IA = IA[['Concatenate','Stock']]
+new2_IA.columns = new2_IA.columns.str.replace('Stock', 'Prev_Stock')'''
+
+'''RA1 = RA1.merge(new_IA, on='SMS Id')
+RA1 = RA1.merge(new2_IA, on='Concatenate')'''
+
+#RA1['Recheck_Sales'] = RA1['Prev_Stock']+RA1['Purchase']-RA1['Stock']
+
+#RA1[RA1['Recheck_Sales']-RA1['Sales']!=0]
+
+# membuat format untuk di merge dengan table lainnya
+m_RA1 = RA1.copy()
+# mengganti nama kolom agar sesuai dengan yg diinginkan
+m_RA1.columns = m_RA1.columns.str.replace('Visit Date', 'RA1').str.replace('RBP', 'RBP_RA1').str.replace('RSP/Price','RSP_RA1').str.replace('Stock','Stock_RA1').str.replace('Purchase','Purchase_RA1')
+m_RA1.columns
+
+## Retail Audit 2 (week 3)
+
+RA2 = pd.read_excel('gdrive/My Drive/JACOB/Data Clean Jacob 2021 Week 3 (RA2).xlsx','Data Clean')
+RA2 = RA2.fillna(0)
+
+RA2['Visit Date'] = RA2['Visit Date'].str.replace('Agu','Aug')
+RA2['Visit Date'] = pd.to_datetime(RA2['Visit Date'])
+
+RA2.head()
+
+RA2['Stock'] = RA2['Shop/Front Stock']+RA2['Other Stock']
+RA2['Purchase'] = RA2['Direct Purchase(Pur1)']+RA2['Missing invoice(Pur3)']+RA2['Missing Stock']-RA2['Double Count']-RA2['Goods Returned']
+RA2.insert(0, 'Concatenate', RA2['SMS Id'].astype('str')+RA2['Product Description'])
+
+RA2 = RA2.drop(['Country Id', 'Country Name', 'Auditor Id', 'Resource Name','Instruction Id', 
+            'Category Id', 'Category Name', 'Module Name','Entity Id','Original Fact Value',
+            'Cluster Id','alternate audit methodology','Shop/Front Stock','Other Stock',
+            'Direct Purchase(Pur1)','Double Count', 'Goods Returned', 'Missing invoice(Pur3)',
+            'Missing Stock','PREIVIOUS STOCK','Audit Status'], axis=1)
+RA2.columns = RA2.columns.str.replace('Number Of Observation by Type of Observation','RBP').str.replace('Sales_W2','Claimed_Sales_RA1(di_RA2)').str.replace('Item Comment','Comment_RA2')
+
+'''new_RA1 = RA1[['SMS Id','Visit Date']].drop_duplicates()
+new_RA1.columns = new_RA1.columns.str.replace('Visit Date', 'Prev_Visit Date')
+new2_RA1 = RA1[['Concatenate','Stock']]
+new2_RA1.columns = new2_RA1.columns.str.replace('Stock', 'Prev_Stock')'''
+
+'''RA2 = RA2.merge(new_RA1, on='SMS Id')
+RA2 = RA2.merge(new2_RA1, on='Concatenate')'''
+
+#RA2['Recheck_Sales'] = RA2['Prev_Stock']+RA2['Purchase']-RA2['Stock']
+
+#RA2[RA2['Recheck_Sales']-RA2['Sales']!=0]
+
+# membuat format untuk di merge dengan table lainnya
+m_RA2 = RA2.copy()
+# mengganti nama kolom agar sesuai dengan yg diinginkan
+m_RA2.columns = m_RA2.columns.str.replace('Visit Date', 'RA2').str.replace('RBP', 'RBP_RA2').str.replace('RSP/Price','RSP_RA2').str.replace('Stock','Stock_RA2').str.replace('Purchase','Purchase_RA2')
+m_RA2.shape
+
+## Retail Audit 3 (week 4)
+
+RA3 = pd.read_excel('gdrive/My Drive/JACOB/Data Clean Jacob 2021 Week 4 (RA3).xlsx','Data Clean')
+RA3 = RA3.fillna(0)
+
+RA3['Visit Date'] = RA3['Visit Date'].str.replace('Agu','Aug')
+RA3['Visit Date'] = pd.to_datetime(RA3['Visit Date'])
+
+RA3['Stock'] = RA3['Shop/Front Stock']+RA3['Other Stock']
+RA3['Purchase'] = RA3['Direct Purchase(Pur1)']+RA3['Missing invoice(Pur3)']+RA3['Missing Stock']-RA3['Double Count']-RA3['Goods Returned']
+RA3.insert(0, 'Concatenate', RA3['SMS Id'].astype('str')+RA3['Product Description'])
+
+RA3.head()
+
+RA3 = RA3.drop(['Country Id', 'Country Name', 'Auditor Id', 'Resource Name','Instruction Id', 
+            'Category Id', 'Category Name', 'Module Name','Entity Id','Original Fact Value',
+            'Cluster Id','alternate audit methodology','Shop/Front Stock','Other Stock',
+            'Direct Purchase(Pur1)','Double Count', 'Goods Returned', 'Missing invoice(Pur3)',
+            'Missing Stock','PREIVIOUS STOCK','Audit Status'], axis=1)
+RA3.columns = RA3.columns.str.replace(
+    'Price To Retailer','RBP').str.replace(
+        'Sales_W2','Claimed_Sales_RA1(di_RA3)').str.replace(
+            'Sales_W3','Claimed_Sales_RA2(di_RA3)').str.replace(
+                'Item Comment','Comment_RA3')
+
+'''new_RA2 = RA2[['SMS Id','Visit Date']].drop_duplicates()
+new_RA2.columns = new_RA2.columns.str.replace('Visit Date', 'Prev_Visit Date')
+new2_RA2 = RA2[['Concatenate','Stock']]
+new2_RA2.columns = new2_RA2.columns.str.replace('Stock', 'Prev_Stock')'''
+
+'''RA3 = RA3.merge(new_RA2, on='SMS Id')
+RA3 = RA3.merge(new2_RA2, on='Concatenate')'''
+
+#RA3['Recheck_Sales'] = RA3['Prev_Stock']+RA3['Purchase']-RA3['Stock']
+
+#RA3[RA3['Recheck_Sales']-RA3['Sales']!=0]
+
+# membuat format untuk di merge dengan table lainnya
+m_RA3 = RA3.copy()
+# mengganti nama kolom agar sesuai dengan yg diinginkan
+m_RA3.columns = m_RA3.columns.str.replace(
+    'Visit Date', 'RA3').str.replace(
+        'RBP', 'RBP_RA3').str.replace(
+            'RSP/Price','RSP_RA3').str.replace(
+                'Stock','Stock_RA3').str.replace(
+                    'Purchase','Purchase_RA3')
+
+## Retail Audit 4 (week 5-6)
+
+RA4 = pd.read_excel('gdrive/My Drive/JACOB/Data Clean Jacob 2021 Week 6 - CS Version.xlsx','Data Clean')
+RA4 = RA4.fillna(0)
+
+RA4['Stock'] = RA4['Shop/Front Stock']+RA4['Other Stock']
+RA4['Purchase'] = RA4['Direct Purchase(Pur1)']+RA4['Missing invoice(Pur3)']+RA4['Missing Stock']-RA4['Double Count']-RA4['Goods Returned']
+RA4.insert(0, 'Concatenate', RA4['SMS Id'].astype('str')+RA4['Product Description'])
+
+RA4.head()
+
+RA4 = RA4.drop(['Country Id', 'Country Name', 'Auditor Id', 'Resource Name','Instruction Id', 
+            'Category Id', 'Category Name', 'Module Name','Entity Id','Original Fact Value',
+            'Cluster Id','alternate audit methodology','Shop/Front Stock','Other Stock',
+            'Direct Purchase(Pur1)','Double Count', 'Goods Returned', 'Missing invoice(Pur3)',
+            'Missing Stock','PREIVIOUS STOCK','Audit Status'], axis=1)
+RA4.columns = RA4.columns.str.replace(
+    'Price To Retailer','RBP').str.replace(
+        'Sales_W2','Claimed_Sales_RA1(di_RA4)').str.replace(
+            'Sales_W3','Claimed_Sales_RA2(di_RA4)').str.replace(
+                'Sales_W4&5', 'Claimed_Sales_RA3(di_RA4)').str.replace(
+                    'Item Comment','Comment_RA4')
+
+'''new_RA3 = RA3[['SMS Id','Visit Date']].drop_duplicates()
+new_RA3.columns = new_RA3.columns.str.replace('Visit Date', 'Prev_Visit Date')
+new2_RA3 = RA3[['Concatenate','Stock']]
+new2_RA3.columns = new2_RA3.columns.str.replace('Stock', 'Prev_Stock')'''
+
+'''RA4 = RA4.merge(new_RA3, on='SMS Id')
+RA4 = RA4.merge(new2_RA3, on='Concatenate')'''
+
+#RA4.head()
+
+#RA4['Recheck_Sales'] = RA4['Prev_Stock']+RA4['Purchase']-RA4['Stock']
+
+#RA4[RA4['Recheck_Sales']-RA4['Sales']!=0]
+
+# membuat format untuk di merge dengan table lainnya
+m_RA4 = RA4.copy()
+# mengganti nama kolom agar sesuai dengan yg diinginkan
+m_RA4.columns = m_RA4.columns.str.replace(
+    'Visit Date', 'RA4').str.replace(
+        'RBP', 'RBP_RA4').str.replace(
+            'RSP/Price','RSP_RA4').str.replace(
+                'Stock','Stock_RA4').str.replace(
+                    'Purchase','Purchase_RA4')
+
+## Merge Data Retail Audit into 1 Dataframe
+
+### Merge DataFrame IA dan RA1
+
+inner = pd.merge(m_IA, m_RA1[['RA1','RBP_RA1', 'RSP_RA1', 'Stock_RA1', 'Purchase_RA1',
+       'Concatenate']], on="Concatenate", how="inner")
+left = pd.merge(m_IA, m_RA1[['RA1','RBP_RA1', 'RSP_RA1', 'Stock_RA1', 'Purchase_RA1',
+       'Concatenate']], on="Concatenate", how="left", indicator=True)
+right = pd.merge(m_IA[['IA','RBP_IA','RSP_IA','Stock_IA','Concatenate']], m_RA1, on="Concatenate", how="right", indicator=True)
+
+df_merge = inner.append(left[left['_merge']=='left_only'], ignore_index = True)
+df_merge = df_merge.append(right[right['_merge']=='right_only'], ignore_index = True)
+
+df_merge = df_merge.drop('_merge', axis=1)
+df_merge.shape
+
+### Merge DataFrame IA+RA1 dan RA2
+
+inner = pd.merge(df_merge, m_RA2[['Concatenate','RA2','RBP_RA2', 'RSP_RA2', 'Stock_RA2', 'Purchase_RA2', 'Claimed_Sales_RA1(di_RA2)', 'Comment_RA2'
+       ]], on="Concatenate", how="inner")
+left = pd.merge(df_merge, m_RA2[['Concatenate','RA2','RBP_RA2', 'RSP_RA2', 'Stock_RA2', 'Purchase_RA2', 'Claimed_Sales_RA1(di_RA2)', 'Comment_RA2']], on="Concatenate", how="left", indicator=True)
+right = pd.merge(df_merge[['Concatenate','IA','RBP_IA','RSP_IA','Stock_IA','RA1','RBP_RA1', 'RSP_RA1', 'Stock_RA1', 'Purchase_RA1']], m_RA2, on="Concatenate", how="right", indicator=True)
+
+inner.shape
+
+left[left['_merge']=='left_only'].shape
+
+right[right['_merge']=='right_only'].shape
+
+df_merge = inner.append(left[left['_merge']=='left_only'], ignore_index = True)
+df_merge = df_merge.append(right[right['_merge']=='right_only'], ignore_index = True)
+
+df_merge = df_merge.drop('_merge', axis=1)
+df_merge.shape
+
+### Merge DataFrame IA+RA1+RA2 dan RA3
+
+inner = pd.merge(df_merge, 
+                 m_RA3[['Concatenate','RA3','RBP_RA3', 'RSP_RA3', 'Stock_RA3', 'Purchase_RA3', 
+                        'Claimed_Sales_RA1(di_RA3)', 'Claimed_Sales_RA2(di_RA3)','Comment_RA3']],
+                 on="Concatenate", how="inner")
+left = pd.merge(df_merge, 
+                m_RA3[['Concatenate','RA3','RBP_RA3', 'RSP_RA3', 'Stock_RA3', 'Purchase_RA3', 
+                       'Claimed_Sales_RA1(di_RA3)', 'Claimed_Sales_RA2(di_RA3)','Comment_RA3']], 
+                on="Concatenate", how="left", indicator=True)
+right = pd.merge(df_merge[['Concatenate','IA','RBP_IA','RSP_IA','Stock_IA',
+                           'RA1','RBP_RA1', 'RSP_RA1', 'Stock_RA1', 'Purchase_RA1',
+                           'RA2','RBP_RA2', 'RSP_RA2', 'Stock_RA2', 'Purchase_RA2','Claimed_Sales_RA1(di_RA2)','Comment_RA2']], 
+                 m_RA3, on="Concatenate", how="right", indicator=True)
+
+df_merge = inner.append(left[left['_merge']=='left_only'], ignore_index = True)
+df_merge = df_merge.append(right[right['_merge']=='right_only'], ignore_index = True)
+
+df_merge.head()
+
+df_merge = df_merge.drop('_merge', axis=1)
+df_merge.shape
+
+### Merge DataFrame IA+RA1+RA2+RA3 dan RA4
+
+inner = pd.merge(df_merge, 
+                 m_RA4[['Concatenate','RA4','RBP_RA4', 'RSP_RA4', 'Stock_RA4', 'Purchase_RA4', 
+                        'Claimed_Sales_RA1(di_RA4)', 'Claimed_Sales_RA2(di_RA4)','Claimed_Sales_RA3(di_RA4)',
+                        'Comment_RA4']],
+                 on="Concatenate", how="inner")
+left = pd.merge(df_merge, 
+                m_RA4[['Concatenate','RA4','RBP_RA4', 'RSP_RA4', 'Stock_RA4', 'Purchase_RA4', 
+                        'Claimed_Sales_RA1(di_RA4)', 'Claimed_Sales_RA2(di_RA4)','Claimed_Sales_RA3(di_RA4)',
+                        'Comment_RA4']], 
+                on="Concatenate", how="left", indicator=True)
+right = pd.merge(df_merge[['Concatenate','IA','RBP_IA','RSP_IA','Stock_IA',
+                           'RA1','RBP_RA1', 'RSP_RA1', 'Stock_RA1', 'Purchase_RA1',
+                           'RA2','RBP_RA2', 'RSP_RA2', 'Stock_RA2', 'Purchase_RA2','Claimed_Sales_RA1(di_RA2)','Comment_RA2',
+                           'RA3','RBP_RA3', 'RSP_RA3', 'Stock_RA3', 'Purchase_RA3','Claimed_Sales_RA1(di_RA3)','Claimed_Sales_RA2(di_RA3)','Comment_RA3']],
+                 m_RA4, on="Concatenate", how="right", indicator=True)
+
+
+
+df_merge = inner.append(left[left['_merge']=='left_only'], ignore_index = True)
+df_merge = df_merge.append(right[right['_merge']=='right_only'], ignore_index = True)
+
+df_merge.head()
+
+df_merge = df_merge.drop('_merge', axis=1)
+df_merge.shape
+
+# Menghitung Sales dengan Elapsed day
+
+df_merge['ED_RA1'] = df_merge['RA1'] - df_merge['IA']
+df_merge['ED_RA2'] = df_merge['RA2'] - df_merge['RA1']
+df_merge['ED_RA3'] = df_merge['RA3'] - df_merge['RA2']
+df_merge['ED_RA4'] = df_merge['RA4'] - df_merge['RA3']
+
+df_merge[df_merge['ED_RA1'].isna()]
+
+
+df_merge['Sales_RA1'] = (df_merge['Stock_IA']+df_merge['Purchase_RA1']-df_merge['Stock_RA1'])/df_merge['ED_RA1']*7
+df_merge['Sales_RA2'] = (df_merge['Stock_RA1']+df_merge['Purchase_RA2']-df_merge['Stock_RA2'])/df_merge['ED_RA2']*7
+df_merge['Sales_RA3'] = (df_merge['Stock_RA2']+df_merge['Purchase_RA3']-df_merge['Stock_RA3'])/df_merge['ED_RA3']*7
+df_merge['Sales_RA4'] = (df_merge['Stock_RA3']+df_merge['Purchase_RA4']-df_merge['Stock_RA4'])/df_merge['ED_RA4']*7
+
+# MAPPING AREA, TYPE TOKO, 
+# MAPPING PRODUCT DESC -> BRAND
+# 
+
+# Store Observation
+
+drop_column = ['LANGUAGE_ID', 'VERSION', 'RESPONSE_NAME', 'RESPONSE_STATUS', 'SOURCE_OF_ENTRY', 'RESPONSE_MODE',
+              'BACKCHK_FLAG', 'QC_STATUS', 'START_TIME', 'SUBMIT_TIME', 'SYNC_TIME', 'SERVER_SYNC_TIME',
+              'CREATED_BY', 'CDAR_USER_ID', 'START_TIME_V1', 'SUBMIT_TIME_V1', 'CREATED_BY_V1', 'CDAR_USER_ID_V1',
+              'SURVEY_DURATION_V1', 'SURVEY_ID', 'SURVEY_VERSION', 'QC_REMARK', 'QC_START_DATE', 'QC_END_DATE',
+              'QC_SYNC_DATE', 'QC_SUBMIT_BY', 'APP_VERSION', 'PLATFORM_NAME', 'PLATFORM_MODEL', 'PLATFORM_VERSION',
+              'FV_STATUS', 'FV_REMARK', 'FV_START_DATE', 'FV_END_DATE', 'FV_SYNC_DATE', 'FV_SUBMIT_BY', 'SCC_STATUS',
+              'SCC_REMARK', 'SCC_START_DATE', 'SCC_END_DATE', 'SCC_SYNC_DATE', 'SCC_SUBMIT_BY', 'FLAG1', 'FLAG2',
+              'FLAG3', 'FLAG4', 'FLAG5', 'SURVEY_MINOR_VERSION', 'Default Question Text', 'Q1. ID Auditor / CT',
+              'Q2. Nama Auditor / CT', 'Q3B. Jam Survey', 'Latitude', 'LON_1', 'Q3L_Status FLAG', 'Q3M_Area Code',
+              'Q4. Apakah informasi toko sudah benar?', 'Q4A. Apakah informasi nama toko sudah benar?', 'Q4A_1. Nama toko', 
+              'Q4B. Apakah informasi alamat toko sudah benar?', 'Q4B_1. Alamat', 'Q4C. Apakah informasi type toko sudah benar?',
+              'Q4C_1. Type toko', 'Q4D. Apakah informasi untuk (Provinsi, Kota, Kel, Kec) sudah benar?', 'Q4D_1. Provinsi',
+              'Q4E_1. Kota', 'Q4F_1. Kecamatan', 'Q4G_1. Kelurahan', 'Q5A. Apakah ada papan penanda toko / spanduk terdapat Nama Toko?',
+              'Q5B. Nama toko (menanyakan ke responden / tetangga)', 'Q5C. Tidak ada nama toko informasi (NA):NA', 'Q6A',
+              'Q6. nama toko di penanda toko / toko tanda-tanda / spanduk toko', 'Q8. Lot / Los / Blokir',
+              'Q9. informasi tambahan', 'Q10. Nama Lengkap pemilik Toko', 'Q11. Nama Penjaga Toko responden (di-interview)',
+              'Q12. nomor telepon - Telkom (area nomor kode + telepon)', 'Q13. Nomor ponsel', 'Alamat', 'Q50N_1', 
+              'Q50N_2', 'Q50N_3', 'Q50N_4', 'Q25', 'Q26', 'Q16_3', 'Q16_4', 'Q16_5', 'Q16_6', 'Q16_7', 'Q16_8', 'Q16_9',
+              'Q16_10', 'Q16_11', 'Q16_12', 'Kecamatan', 'Kelurahan',
+              'Q32_You have completed the survey, please check the data on summary page.']
+
+Promotion_APM = ['Q50A_Apakah toko anda mendapatkan material promosi (sticker,poster,etc) untuk brand dibawah ini::Brand Apache Merah',
+                 'Q50B_Apakah ada promosi diskon untuk Brand di bawah ini ::Brand Apache Merah',
+                 'Q50C_Apakah ada promosi Beli berapa pack gratis berapa pack contoh beli 2 gratis 1, beli 4 gratis 1 untuk Brand di bawah ini ::Brand Apache Merah',
+                 'Q50D_Apakah ada promosi hadiah penjualan : Dapatkan Poin, Dapatkan Hadiah, dll. untuk Brand di bawah ini ::Brand Apache Merah',
+                 'Q50E_Apakah ada promosi tukar cangkang/bungkus untuk Brand di bawah ini ::Brand Apache Merah',
+                 'Q50F_Apakah ada promosi bundling produk untuk Brand di bawah ini ::Brand Apache Merah']
+
+Visibility_APM = ['Q50H_Apakah ada POSM sunscreen untuk brand berikut.:Brand Apache Merah',
+                  'Q50I_Apakah ada POSM Tape Blocking Display untuk brand berikut.:Brand Apache Merah',
+                  'Q50J_Apakah ada POSM decorative pack untuk brand berikut:Brand Apache Merah',
+                  'Q50K_Apakah ada POSM sticker per pack atau perbatang untuk brand berikut:Brand Apache Merah',
+                  'Q50L_Apakah ada POSM Blocking Display (Dummy Pack ada 5 Pack kosong) untuk brand berikut:Brand Apache Merah',
+                  'Q50M_Apakah ada POSM Hanging Lighter untuk brand berikut:Brand Apache Merah']
+
+MAP = pd.read_excel('gdrive/My Drive/JACOB/Datamap DCT Jacob.xlsx')
+
+## Store Observation - IA
+
+SO_IA = pd.read_excel('gdrive/My Drive/JACOB/Data Clean JTI-Jacob 2021 Week 1-IA.xlsx','Rawdata DCT')
+
+col_name = pd.DataFrame(SO_IA.columns, columns=['Variable'])
+col_name = col_name.merge(MAP[['Variable','Label']], on='Variable')
+col_name = col_name.drop('Variable', axis=1)
+SO_IA.columns = col_name['Label']
+
+SO_IA = SO_IA.drop(drop_column, axis=1)
+
+## Store Observation 1
+
+SO1 = pd.read_excel('gdrive/My Drive/JACOB/Data Clean Jacob 2021 Week 2 (RA1).xlsx','Rawdata DCT')
+
+col_name = pd.DataFrame(SO1.columns, columns=['Variable'])
+col_name = col_name.merge(MAP[['Variable','Label']], on='Variable')
+col_name = col_name.drop('Variable', axis=1)
+SO1.columns = col_name['Label']
+
+drop_column.append('Q7. Lantai')
+
+SO1 = SO1.drop(drop_column, axis=1)
+
+## Store Observation 2 (Pre Launch)
+
+SO2 = pd.read_excel('gdrive/My Drive/JACOB/Data Clean Jacob 2021 Week 3 (RA2).xlsx','DCT')
+
+col_name = pd.DataFrame(SO2.columns, columns=['Variable'])
+col_name = col_name.merge(MAP[['Variable','Label']], on='Variable')
+col_name = col_name.drop('Variable', axis=1)
+SO2.columns = col_name['Label']
+
+SO2 = SO2.drop(drop_column, axis=1)
+
+## Store Observation 3 (Post Launch 1)
+
+SO3 = pd.read_excel('gdrive/My Drive/JACOB/Data Clean Jacob 2021 Week 4 (RA3).xlsx','DCT')
+
+col_name = pd.DataFrame(SO3.columns, columns=['Variable'])
+col_name = col_name.merge(MAP[['Variable','Label']], on='Variable')
+col_name = col_name.drop('Variable', axis=1)
+SO3.columns = col_name['Label']
+
+SO3 = SO3.drop(drop_column, axis=1)
+
+### Merge Store Observation
+
+mapping_toko = SO_IA[['Store Code','Type Toko','Provinsi']]
+mapping_toko.shape
+
+mapping_toko = mapping_toko.append(SO1[['Store Code','Type Toko','Provinsi']])
+mapping_toko.shape
+
+mapping_toko = mapping_toko.append(SO2[['Store Code','Type Toko','Provinsi']])
+mapping_toko.shape
+
+
+
+df_merge = inner.append(left[left['_merge']=='left_only'], ignore_index = True)
+df_merge = df_merge.append(right[right['_merge']=='right_only'], ignore_index = True)
+
+df_merge = df_merge.drop('_merge', axis=1)
+df_merge.shape
+
+# Notes
+
+sales = prev_stock+purchase+missinginv+missinstock-shopstock-otherstock - goodreturn-wholesales
+
+
+
+# Checking
+
+##1. Ada Promotion tapi tidak ada sales
+
+##2. Ada POSM tapi tidak ada sales
+
+##3. Ada sales tapi tidak ada promotion ataupun POSM
